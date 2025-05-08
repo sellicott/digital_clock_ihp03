@@ -104,17 +104,8 @@ module tiny_tapeout_tb ();
     else timeout_counter <= 16'h0;
   end
 
-// Setup the Tiny Tapeout Project
-`ifdef GL_TEST
-  wire VPWR = 1'b1;
-  wire VGND = 1'b0;
-`endif
-
+  // Setup the Tiny Tapeout Project
   tt_um_digital_clock_example digital_clock (
-`ifdef GL_TEST
-    .VPWR(VPWR),
-    .VGND(VGND),
-`endif
     .ui_in  (ui_in),    // Dedicated inputs - connected to the input switches
     .uo_out (uo_out),   // Dedicated outputs - connected to the 7 segment display
     .uio_in (uio_in),   // IOs: Bidirectional Input path
