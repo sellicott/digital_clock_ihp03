@@ -68,8 +68,8 @@ clock_mode_converter_json: $(SRC_DIR)/core/clock_mode_converter.v
 # The TESTBENCH_FST variable genenerates a list of elaborated files from the list of 
 # testbenches
 tiny_tapeout_gl_tb.vvp: tiny_tapeout_tb.v \
-  $(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_io/verilog/sg13g2_io.v
-  $(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_stdcell/verilog/sg13g2_stdcell.v
+  $(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_io/verilog/sg13g2_io.v \
+  $(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_stdcell/verilog/sg13g2_stdcell.v \
   $(PDK_ROOT)/sky130A/libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v \
   tt_um_digital_clock_example.v \
   $(OUTPUT_TESTBENCH)
