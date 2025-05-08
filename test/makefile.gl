@@ -16,9 +16,6 @@ VERILOG_SOURCES += $(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_stdcell/verilog/sg13g2
 
 # this gets copied in by the GDS action workflow
 VERILOG_SOURCES += $(PWD)/gate_level_netlist.v
-
-# this gets copied in by the GDS action workflow
-VERILOG_SOURCES += $(PWD)/gate_level_netlist.v
 VERILOG_SOURCES += $(SRC_DIR)/input/refclk_sync.v
 VERILOG_SOURCES += $(SRC_DIR)/input/clk_gen.v
 VERILOG_SOURCES += $(SRC_DIR)/test/bcd_to_7seg.v
