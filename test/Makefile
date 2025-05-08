@@ -1,42 +1,160 @@
-# Makefile
-# See https://docs.cocotb.org/en/stable/quickstart.html for more info
-
-# defaults
-SIM ?= icarus
-TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(PWD)/../src
-PROJECT_SOURCES = project.v
 
-ifneq ($(GATES),yes)
+# List of testbenches to run automatically
+SRC_TESTBENCHES += button_debounce_tb.v
+SRC_TESTBENCHES += clock_register_tb.v
+SRC_TESTBENCHES += binary_to_bcd_tb.v
+SRC_TESTBENCHES += bcd_to_7seg_tb.v
+SRC_TESTBENCHES += clock_to_bcd_tb.v
+SRC_TESTBENCHES += max7219_tb.v
+SRC_TESTBENCHES += max7219_settings_tb.v
+SRC_TESTBENCHES += output_wrapper_tb.v
+SRC_TESTBENCHES += display_controller_tb.v
+SRC_TESTBENCHES += clock_wrapper_tb.v
+SRC_TESTBENCHES += tiny_tapeout_tb.v
 
-# RTL simulation:
-SIM_BUILD				= sim_build/rtl
-VERILOG_SOURCES += $(addprefix $(SRC_DIR)/,$(PROJECT_SOURCES))
+# Generate lists of output files from the list of testbenches
+TESTBENCH_FST = $(SRC_TESTBENCHES:.v=.fst)
+TESTBENCH_LOG = $(SRC_TESTBENCHES:.v=.log)
+TESTBENCH_SIM = $(basename $(SRC_TESTBENCHES))
+.PHONY: $(TESTBENCH_SIM) all clean
 
-else
-
-# Gate level simulation:
-SIM_BUILD				= sim_build/gl
+# For doing gate level simulation
+# PDK_ROOT = $(HOME)/.volare
 COMPILE_ARGS    += -DGL_TEST
 COMPILE_ARGS    += -DFUNCTIONAL
+COMPILE_ARGS    += -DUSE_POWER_PINS
 COMPILE_ARGS    += -DSIM
-VERILOG_SOURCES += $(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_io/verilog/sg13g2_io.v
-VERILOG_SOURCES += $(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_stdcell/verilog/sg13g2_stdcell.v
+COMPILE_ARGS    += -DUNIT_DELAY=\#1
 
-# this gets copied in by the GDS action workflow
-VERILOG_SOURCES += $(PWD)/gate_level_netlist.v
+# Define required modules for various parts of the clock
+CLOCK_INPUT = $(SRC_DIR)/input/refclk_sync.v \
+	      $(SRC_DIR)/input/clk_gen.v \
+	      $(SRC_DIR)/input/button_debounce.v
 
-endif
+CLOCK_CORE = $(SRC_DIR)/core/clock_register.v \
+	     $(SRC_DIR)/core/clock_mode_converter.v \
+	     $(SRC_DIR)/core/decimal_point_controller.v
 
-# Allow sharing configuration between design and testbench via `include`:
-COMPILE_ARGS 		+= -I$(SRC_DIR)
+	     
+CLOCK_DISPLAY = $(SRC_DIR)/core/display_controller.v \
+		$(SRC_DIR)/core/output_wrapper.v \
+		$(SRC_DIR)/output/clock_to_bcd.v \
+		$(SRC_DIR)/output/binary_to_bcd.v \
+		$(SRC_DIR)/output/max7219_settings.v \
+		$(SRC_DIR)/output/max7219.v
 
-# Include the testbench sources:
-VERILOG_SOURCES += $(PWD)/tb.v
-TOPLEVEL = tb
+OUTPUT_TESTBENCH = $(SRC_DIR)/test/bcd_to_7seg.v \
+		   $(SRC_DIR)/test/test_max7219_moc.v \
+		   $(SRC_DIR)/test/test_7seg_to_bcd.v
 
-# MODULE is the basename of the Python test file
-MODULE = test
 
-# include cocotb's make rules to take care of the simulator setup
-include $(shell cocotb-config --makefiles)/Makefile.sim
+# What to do when just "make" is run
+# Build all the testbench output dump files
+all: $(TESTBENCH_FST)
+	cat $(TESTBENCH_LOG) > logfile.txt
+
+
+clock_wrapper_json: $(SRC_DIR)/clock_wrapper.v \
+  $(CLOCK_INPUT) \
+  $(CLOCK_CORE) \
+  $(CLOCK_DISPLAY) 
+	../elaborate_json.sh clock_wrapper $^
+
+clock_mode_converter_json: $(SRC_DIR)/core/clock_mode_converter.v
+	../elaborate_json.sh clock_mode_converter $^
+
+# Rules for compiling each testbench (how to generate a elaborated netlist ".vvp" file)
+# The TESTBENCH_FST variable genenerates a list of elaborated files from the list of 
+# testbenches
+tiny_tapeout_gl_tb.vvp: tiny_tapeout_tb.v \
+  $(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_io/verilog/sg13g2_io.v
+  $(PDK_ROOT)/ihp-sg13g2/libs.ref/sg13g2_stdcell/verilog/sg13g2_stdcell.v
+  $(PDK_ROOT)/sky130A/libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v \
+  tt_um_digital_clock_example.v \
+  $(OUTPUT_TESTBENCH)
+	iverilog -o $@ $(COMPILE_ARGS) $^
+
+tiny_tapeout_tb.vvp: tiny_tapeout_tb.v \
+  $(SRC_DIR)/tt_um_digital_clock_example.v \
+  $(SRC_DIR)/clock_wrapper.v \
+  $(CLOCK_INPUT) \
+  $(CLOCK_CORE) \
+  $(CLOCK_DISPLAY) \
+  $(OUTPUT_TESTBENCH)
+	iverilog -o $@ $^
+
+clock_wrapper_tb.vvp: clock_wrapper_tb.v \
+  $(SRC_DIR)/clock_wrapper.v \
+  $(CLOCK_INPUT) \
+  $(CLOCK_CORE) \
+  $(CLOCK_DISPLAY) \
+  $(OUTPUT_TESTBENCH)
+	iverilog -o $@ $^
+
+display_controller_tb.vvp: display_controller_tb.v \
+  $(SRC_DIR)/core/display_controller.v \
+  $(CLOCK_INPUT) \
+  $(CLOCK_DISPLAY)
+	iverilog -o $@ $^
+
+output_wrapper_tb.vvp: output_wrapper_tb.v \
+  $(CLOCK_DISPLAY) \
+  $(OUTPUT_TESTBENCH)
+	iverilog -o $@ $^
+
+max7219_settings_tb.vvp: max7219_settings_tb.v \
+  $(SRC_DIR)/output/max7219_settings.v \
+  $(SRC_DIR)/output/max7219.v
+	iverilog -o $@ $^
+
+max7219_tb.vvp: max7219_tb.v \
+  $(SRC_DIR)/output/max7219.v \
+  $(OUTPUT_TESTBENCH)
+	iverilog -o $@ $^
+
+bcd_to_7seg_tb.vvp: bcd_to_7seg_tb.v \
+  $(SRC_DIR)/test/bcd_to_7seg.v
+	iverilog -o $@ $^
+
+clock_to_bcd_tb.vvp: clock_to_bcd_tb.v \
+  $(SRC_DIR)/output/clock_to_bcd.v \
+  $(SRC_DIR)/output/binary_to_bcd.v
+	iverilog -o $@ $^
+
+binary_to_bcd_tb.vvp: binary_to_bcd_tb.v \
+  $(SRC_DIR)/output/binary_to_bcd.v
+	iverilog -o $@ $^
+
+clock_register_tb.vvp: clock_register_tb.v \
+  $(SRC_DIR)/core/clock_register.v \
+  $(CLOCK_INPUT)
+	iverilog -o $@ $^
+
+button_debounce_tb.vvp: button_debounce_tb.v \
+  $(CLOCK_INPUT)
+	iverilog -o $@ $^
+
+clk_gen_tb.vvp: clk_gen_tb.v \
+  $(SRC_DIR)/input/refclk_sync.v \
+  $(SRC_DIR)/input/clk_gen.v
+	iverilog -o $@ $^
+
+# Generate output files from elaborated simulation
+%.vcd: %.vvp
+	vvp $^
+
+%.fst : %.vvp
+	vvp $^ -fst | tee $*.log
+
+# run gtkwave on a simulation output file
+% : %.fst
+	-gtkwave -o $< $@.gtkw &
+
+clean:
+	-rm *.vcd
+	-rm *.vvp
+	-rm *.fst
+	-rm *.log
+	-rm results.xml
+	-rm logfile.txt
