@@ -83,8 +83,8 @@ jobs:
     - name: Run tests
       shell: bash
       run: |
-        cp tt_submission/*.v "$TEST_DIR/gate_level_netlist.v"
-        cd "$TEST_DIR"
+        cp tt_submission/*.v "test/gate_level_netlist.v"
+        cd "test"
         rm -f tb.vcd results.xml
         make -f makefile.gl clean
         GATES=yes make -f makefile.gl
@@ -97,14 +97,14 @@ jobs:
       with:
           name: gatelevel_test_vcd
           path: |
-            ${{ env.TEST_DIR }}/tb.vcd
-            ${{ env.TEST_DIR }}/results.xml
+            test/tb.vcd
+            test/results.xml
 
     - name: Test Summary
       if: always()
       uses: test-summary/action@v2.3
       with:
-        paths: ${{ env.TEST_DIR }}/results.xml
+        paths: test/results.xml
 
   viewer:
     needs: gds
