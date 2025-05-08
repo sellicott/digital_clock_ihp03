@@ -5,32 +5,6 @@
 SIM ?= icarus
 TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(PWD)/../src
-PROJECT_SOURCES = tt_um_digital_clock_example.v \
-  clock_wrapper.v \
-  input/refclk_sync.v \
-  input/clk_gen.v \
-  input/button_debounce.v \
-  core/clock_register.v \
-  core/clock_mode_converter.v \
-  core/decimal_point_controller.v \
-  core/display_controller.v \
-  core/output_wrapper.v \
-  output/clock_to_bcd.v \
-  output/binary_to_bcd.v \
-  output/max7219_settings.v \
-  output/max7219.v \
-  test/bcd_to_7seg.v \
-  test/test_max7219_moc.v \
-  test/test_7seg_to_bcd.v
-
-ifneq ($(GATES),yes)
-
-# RTL simulation:
-SIM_BUILD				= sim_build/rtl
-VERILOG_SOURCES += $(addprefix $(SRC_DIR)/,$(PROJECT_SOURCES))
-COMPILE_ARGS += -I$(SRC_DIR)
-
-else
 
 # Gate level simulation:
 SIM_BUILD        = sim_build/gl
